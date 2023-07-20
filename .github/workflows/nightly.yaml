@@ -23,18 +23,31 @@ on:
   pull_request:
     paths: [".github/workflows/nightly.yaml"]
 
+env:
+  DOCKER_REPO: "tigrisdata/kvrocks"
+  QUAY_REPO: "quay.io/tigrisdata/kvrocks"
+
 jobs:
   publish-nightly-docker-image:
     name: Publish nightly Docker image
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04-16-cores
     steps:
       - uses: actions/checkout@v3
+
       - name: Login Docker Hub
         if: (github.event_name != 'pull_request')
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.GH_DOCKER_ACCESS_USER }}
           password: ${{ secrets.GH_DOCKER_ACCESS_TOKEN }}
+
+      - name: Login to Quay.io
+        if: (github.event_name != 'pull_request')
+        uses: docker/login-action@v2
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USER }}
+          password: ${{ secrets.QUAY_TOKEN }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -53,7 +66,9 @@ jobs:
         id: meta
         uses: docker/metadata-action@v4
         with:
-          images: tigrisdata/kvrocks
+          images: |
+            ${{ env.DOCKER_REPO }}
+            ${{ env.QUAY_REPO }}
           flavor: latest=false
           tags: |
             type=sha,prefix=nightly-{{date 'YYYYMMDD'}}-,format=short

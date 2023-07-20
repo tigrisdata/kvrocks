@@ -17,7 +17,10 @@
 
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [unstable]
+  pull_request:
 
 # Concurrency strategy:
 #   github.workflow: distinguish this workflow from others
@@ -35,7 +38,7 @@ concurrency:
 jobs:
   precondition:
     name: Precondition
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-16-cores
     outputs:
       docs_only: ${{ steps.result.outputs.docs_only }}
     steps:
@@ -54,12 +57,12 @@ jobs:
     name: Lint and check code
     needs: [precondition]
     if: ${{ needs.precondition.outputs.docs_only != 'true' }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-16-cores
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version-file: 'tests/gocase/go.mod'
+          go-version-file: "tests/gocase/go.mod"
       - name: Prepare Dependencies
         run: |
           sudo apt update
@@ -97,97 +100,38 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Darwin Clang
-            os: macos-11
-            compiler: auto
-          - name: Darwin Clang without Jemalloc
-            os: macos-11
-            compiler: auto
-            without_jemalloc: -DDISABLE_JEMALLOC=ON
-          - name: Darwin Clang with OpenSSL
-            os: macos-11
-            compiler: auto
-            with_openssl: -DENABLE_OPENSSL=ON
-          - name: Darwin Clang without luaJIT
-            os: macos-11
-            compiler: auto
-            without_luajit: -DUSE_LUAJIT=OFF
           - name: Ubuntu GCC
             os: ubuntu-20.04
             compiler: gcc
-          - name: Ubuntu Clang
-            os: ubuntu-20.04
-            compiler: clang
           - name: Ubuntu 22 GCC
             os: ubuntu-22.04
             compiler: gcc
-          - name: Ubuntu 22 Clang
-            os: ubuntu-22.04
-            compiler: clang
           - name: Ubuntu GCC ASan
             os: ubuntu-20.04
             without_jemalloc: -DDISABLE_JEMALLOC=ON
             with_sanitizer: -DENABLE_ASAN=ON
             compiler: gcc
-          - name: Ubuntu Clang ASan
-            os: ubuntu-20.04
-            with_sanitizer: -DENABLE_ASAN=ON
-            without_jemalloc: -DDISABLE_JEMALLOC=ON
-            compiler: clang
           - name: Ubuntu GCC TSan
             os: ubuntu-20.04
             without_jemalloc: -DDISABLE_JEMALLOC=ON
             with_sanitizer: -DENABLE_TSAN=ON
             compiler: gcc
             ignore_when_tsan: -tags="ignore_when_tsan"
-          - name: Ubuntu Clang TSan
-            os: ubuntu-20.04
-            with_sanitizer: -DENABLE_TSAN=ON
-            without_jemalloc: -DDISABLE_JEMALLOC=ON
-            compiler: clang
-            ignore_when_tsan: -tags="ignore_when_tsan"
-          - name: Ubuntu GCC Ninja
-            os: ubuntu-20.04
-            with_ninja: --ninja
-            compiler: gcc
           - name: Ubuntu GCC with OpenSSL
             os: ubuntu-20.04
             compiler: gcc
             with_openssl: -DENABLE_OPENSSL=ON
-          - name: Ubuntu Clang with OpenSSL
-            os: ubuntu-20.04
-            compiler: clang
-            with_openssl: -DENABLE_OPENSSL=ON
-          - name: Ubuntu GCC without luaJIT
-            os: ubuntu-20.04
-            without_luajit: -DUSE_LUAJIT=OFF
-            compiler: gcc
-          - name: Ubuntu Clang without luaJIT
-            os: ubuntu-20.04
-            without_luajit: -DUSE_LUAJIT=OFF
-            compiler: clang
           - name: Ubuntu GCC with new encoding
             os: ubuntu-20.04
             compiler: gcc
             new_encoding: -DENABLE_NEW_ENCODING=TRUE
-          - name: Ubuntu Clang with new encoding
-            os: ubuntu-20.04
-            compiler: clang
-            new_encoding: -DENABLE_NEW_ENCODING=TRUE
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-16-cores
     steps:
-      - name: Setup macOS
-        if: ${{ startsWith(matrix.os, 'macos') }}
-        run: |
-          brew install cmake gcc autoconf automake libtool openssl
-          echo "NPROC=$(sysctl -n hw.ncpu)" >> $GITHUB_ENV
-          echo "CMAKE_EXTRA_DEFS=-DOPENSSL_ROOT_DIR=/usr/local/opt/openssl" >> $GITHUB_ENV
       - name: Setup Linux
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
         run: |
           sudo apt update
-          sudo apt install -y ninja-build
           echo "NPROC=$(nproc)" >> $GITHUB_ENV
 
       - name: Cache redis
@@ -211,12 +155,12 @@ jobs:
           python-version: 3.x
       - uses: actions/setup-go@v3
         with:
-          go-version-file: 'tests/gocase/go.mod'
+          go-version-file: "tests/gocase/go.mod"
 
       - name: Build Kvrocks
         run: |
-          ./x.py build -j$NPROC --unittest --compiler ${{ matrix.compiler }} ${{ matrix.without_jemalloc }} ${{ matrix.without_luajit }} \
-            ${{ matrix.with_ninja }} ${{ matrix.with_sanitizer }} ${{ matrix.with_openssl }} ${{ matrix.new_encoding }} ${{ env.CMAKE_EXTRA_DEFS }}
+          ./x.py build -j$NPROC --unittest --compiler ${{ matrix.compiler }} ${{ matrix.without_jemalloc }} \
+            ${{ matrix.with_sanitizer }} ${{ matrix.with_openssl }} ${{ matrix.new_encoding }} ${{ env.CMAKE_EXTRA_DEFS }}
 
       - name: Setup Coredump
         if: ${{ startsWith(matrix.os, 'ubuntu') }}
@@ -281,7 +225,7 @@ jobs:
     name: Check Docker image
     needs: [precondition, check-and-lint]
     if: ${{ needs.precondition.outputs.docs_only != 'true' }}
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04-16-cores
     steps:
       - uses: actions/checkout@v3
       - name: Get core numbers
@@ -302,7 +246,7 @@ jobs:
           - name: CentOS 7
             image: centos:7
             compiler: gcc
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04-16-cores
     container:
       image: ${{ matrix.image }}
     steps:
@@ -336,7 +280,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
         with:
-          go-version-file: 'tests/gocase/go.mod'
+          go-version-file: "tests/gocase/go.mod"
 
       - name: Build Kvrocks
         if: ${{ startsWith(matrix.image, 'centos') }}
