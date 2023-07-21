@@ -1,0 +1,20 @@
+services:
+  memtier_benchmark:
+    image: redislabs/memtier_benchmark:latest
+    command: --server=kvrocks --generate-keys --hide-histogram --print-percentiles=50,90,99 --data-size=4096
+    links:
+      - kvrocks
+
+  kvrocks:
+    build: .
+    command: --port 6379 --db-name db1.db --rocksdb.block_cache_size 256 --rocksdb.target_file_size_base 32 --rocksdb.block_size 4096 --rocksdb.compression lz4 --rocksdb.enable_blob_files yes --rocksdb.min_blob_size 0
+    ports:
+      - 6379:6379
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 512M
+        reservations:
+          cpus: "2.0"
+          memory: 512M
