@@ -38,7 +38,7 @@ concurrency:
 jobs:
   precondition:
     name: Precondition
-    runs-on: ubuntu-22.04-16-cores
+    runs-on: ubuntu-22.04
     outputs:
       docs_only: ${{ steps.result.outputs.docs_only }}
     steps:
@@ -57,7 +57,7 @@ jobs:
     name: Lint and check code
     needs: [precondition]
     if: ${{ needs.precondition.outputs.docs_only != 'true' }}
-    runs-on: ubuntu-22.04-16-cores
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
@@ -225,7 +225,7 @@ jobs:
     name: Check Docker image
     needs: [precondition, check-and-lint]
     if: ${{ needs.precondition.outputs.docs_only != 'true' }}
-    runs-on: ubuntu-22.04-16-cores
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
       - name: Get core numbers
@@ -246,7 +246,7 @@ jobs:
           - name: CentOS 7
             image: centos:7
             compiler: gcc
-    runs-on: ubuntu-22.04-16-cores
+    runs-on: ubuntu-20.04
     container:
       image: ${{ matrix.image }}
     steps:

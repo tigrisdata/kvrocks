@@ -30,7 +30,7 @@ env:
 jobs:
   publish-nightly-docker-image:
     name: Publish nightly Docker image
-    runs-on: ubuntu-22.04-16-cores
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
 
