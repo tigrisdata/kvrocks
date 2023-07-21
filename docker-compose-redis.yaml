@@ -1,0 +1,12 @@
+services:
+  memtier_benchmark:
+    image: redislabs/memtier_benchmark:latest
+    command: --server=redis --generate-keys --hide-histogram --print-percentiles=50,90,99 --data-size=4096
+    links:
+      - redis
+
+  redis:
+    image: redis
+    command: --maxmemory 256mb
+    ports:
+      - 6379:6379
